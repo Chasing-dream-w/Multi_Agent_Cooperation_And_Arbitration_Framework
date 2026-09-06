@@ -16,10 +16,14 @@ class BaseAgent:
         self.system_prompt = system_prompt
         self.messages = [{"role": "system", "content": system_prompt}]
         self.trajectory = []
+        self.turn_start_indices = []
 
     def run(self, user_input: str) -> str:
         """单次ReAct循环"""
+        # 每轮只记录当前轮次的思考轨迹
+        self.trajectory = []
         # 追加用户消息
+        self.turn_start_indices.append(len(self.messages))
         self.messages.append({"role": "user",
                               "content": user_input
         })
@@ -34,7 +38,21 @@ class BaseAgent:
         # 判断是否有工具调用
         if assistant_msg.tool_calls:
             # 执行工具
-            self.messages.append(assistant_msg)
+            self.messages.append({
+                "role": assistant_msg.role,
+                "content": assistant_msg.content,
+                "tool_calls": [
+                    {
+                        "id": tool_call.id,
+                        "type": tool_call.type or "function",
+                        "function": {
+                            "name": tool_call.function.name,
+                            "arguments": tool_call.function.arguments,
+                        },
+                    }
+                    for tool_call in assistant_msg.tool_calls
+                ],
+            })
             for tool_call in assistant_msg.tool_calls:
                 tool_name = tool_call.function.name
                 try:
@@ -45,7 +63,7 @@ class BaseAgent:
                 self.trajectory.append({"type": "action",
                                         "tool": tool_name,
                                         "args": args,
-                                        "content":f"工具调用{tool_name}, 参数{args}"
+                                        "content": f"工具调用{tool_name}, 参数{args}"
                 })
 
                 if tool_name in TOOL_MAP:
@@ -93,14 +111,18 @@ class BaseAgent:
         """重置对话历史"""
         self.messages = [{"role": "system", "content": self.system_prompt}]
         self.trajectory = []
+        self.turn_start_indices = []
 
-    def set_messages_windows(self, window_size: int =3):
-        """滑动窗口处理对话历史,只保留最新的3条消息的记忆和思考轨迹"""
-        if len(self.messages) > window_size:
-            # 提取系统提示词 和 提取用户问题
-            system_messages = [m for m in self.messages if m.get("role") == "system"]
-            normal_messages = [m for m in self.messages if m.get("role") != "system"]
-            # 保留系统提示词 和 最近windows_size大小的用户问题
-            self.messages = system_messages + normal_messages[-window_size:]
-        if len(self.trajectory) > window_size:
-            self.trajectory = self.trajectory[-window_size:]
+    def set_messages_windows(self, window_size: int = 3):
+        """按完整轮次滑动历史消息,轨迹由每次run()单独维护"""
+        if len(self.turn_start_indices) <= window_size:
+            return
+
+        starts = self.turn_start_indices[-window_size:]
+        first_index = starts[0]
+
+        system = [m for m in self.messages if m.get("role") == "system"]
+        history = self.messages[first_index:]
+
+        self.messages = system + history
+        self.turn_start_indices = [len(system) + (s - first_index) for s in starts]
