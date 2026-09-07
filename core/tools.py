@@ -65,10 +65,29 @@ def Web_Search(query: str, max_result: int = 3) -> str:
     except Exception as e:
         return f"搜索失败: {str(e)}。提示：请检查网络连接。"
 
-def Get_Database():
-    # 从数据库中获取数据
+def Get_History_Memory():
+    # 从本地数据库中获取历史记忆
     pass
 
+def Rag():
+    # 从文本嵌入的向量数据库中拿知识
+    pass
+
+def Weather_search():
+    # 天气查询
+    pass
+
+def File_Read():
+    # 文件读取
+    pass
+
+def Self_Summary():
+    # 对话历史自我总结
+    pass
+
+def Code_Sandbox():
+    # 代码沙盒
+    pass
 
 # 函数哈希
 TOOL_MAP = {
