@@ -28,15 +28,15 @@ if __name__ == '__main__':
         traj_prog = prog_agent.get_trajectory()
 
         # # 打印思考轨迹
-        # print("#" * 50)
-        # print("数学家思考轨迹:")
-        # for step in traj_math:
-        #     print(f"{step['content']}")
-        # print("#" * 50)
-        # print("程序员思考轨迹:")
-        # for step in traj_prog:
-        #     print(f"{step['content']}")
-        # print("#" * 50)
+        print("#" * 50)
+        print("数学家思考轨迹:")
+        for step in traj_math:
+            print(f"{step['content']}")
+        print("#" * 50)
+        print("程序员思考轨迹:")
+        for step in traj_prog:
+            print(f"{step['content']}")
+        print("#" * 50)
 
         #将思考轨迹加入判别
         review = arbiter_agent.evaluate(

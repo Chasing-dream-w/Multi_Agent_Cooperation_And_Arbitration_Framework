@@ -44,7 +44,7 @@ def Date_Calculator(days: int, base_date: str = None) -> str:
         return f"日期计算错误: {str(e)}"
 
 # 简单翻译
-def Translate_Text(text: str, target_lang: str= "zh_CN") -> str:
+def Translate_Text(text: str, target_lang: str = "zh-CN") -> str:
     try:
         translator = GoogleTranslator(source='auto', target= target_lang)
         translated_text = translator.translate(text)
