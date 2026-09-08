@@ -17,7 +17,7 @@ class BaseAgent:
         self.messages = [{"role": "system", "content": system_prompt}]
         self.trajectory = []
         self.turn_start_indices = []
-        self.max_steps = 3
+        self.max_steps = 4
 
     def run(self, user_input: str, max_steps: int = None) -> str:
         """多步ReAct循环：允许模型多次调用工具后再给出最终答案"""
