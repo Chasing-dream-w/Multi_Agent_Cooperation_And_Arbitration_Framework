@@ -1,41 +1,14 @@
-from agents.mathematician import Mathematician
-from agents.programmer import Programmer
-from agents.arbiter import Arbiter
 from core.tools import Reset_Cache
-from agents.roles_config import get_role
 from concurrent.futures import ThreadPoolExecutor
+from agents.base_agent import create_agent
 
 
 if __name__ == '__main__':
 
-    # 成员角色池
-    math_config = get_role("mathematician")
-    prog_config = get_role("programmer")
-    data_architect_config = get_role("big_data_architect")
-    writer_config = get_role("writer")
-    composer_config = get_role("composer")
-    english_teacher_config = get_role("english_teacher")
-    philosopher_config = get_role("philosopher")
-    psychologist_config = get_role("psychologist")
-    hardware_engineer_config = get_role("hardware_engineer")
-    video_editor_config = get_role("video_editor")
-    secretary_config = get_role("secretary")
-    influencer_config = get_role("influencer")
-    lawyer_config = get_role("lawyer")
-    # 审核员角色池
-    referee_config = get_role("referee")
-    reviewer_config = get_role("reviewer")
-    justice_config = get_role("justice")
-    grader_config = get_role("grader")
-    auditor_config = get_role("auditor")
-    editor_config = get_role("editor")
+    math_agent = create_agent("mathematician")
+    prog_agent = create_agent("programmer")
+    arbiter_agent = create_agent("referee")
 
-
-
-
-    math_agent = Mathematician()
-    prog_agent = Programmer()
-    arbiter_agent = Arbiter()
     ans_math = ""
     ans_prog = ""
     while True:

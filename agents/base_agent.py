@@ -10,14 +10,30 @@ sys.path.append(parent_dir)
 
 from core.llm_clients import prepare_message
 from core.tools import TOOL_DEFINITIONS, TOOL_MAP
+from agents.roles_config import get_role
 
 class BaseAgent:
-    def __init__(self, system_prompt: str):
+    def __init__(self, system_prompt: str, allowed_tools=None,
+                 role_id: str = "", name: str = ""):
         self.system_prompt = system_prompt
+        self.role_id = role_id
+        self.name = name
+        self.allowed_tools = allowed_tools  # None/"*" = 全量；列表 = 白名单
         self.messages = [{"role": "system", "content": system_prompt}]
         self.trajectory = []
         self.turn_start_indices = []
         self.max_steps = 4
+        # 关键：按白名单过滤，模型只能"看到"被允许的工具
+        self.tool_definitions = self._filter_tool_definitions(TOOL_DEFINITIONS)
+
+
+    def _filter_tool_definitions(self, all_defs: list) -> list:
+        """按 allowed_tools 过滤工具定义；None 或 "*" 表示全量"""
+        if self.allowed_tools in (None, "*"):
+            return all_defs
+        allow = set(self.allowed_tools)
+        return [d for d in all_defs if d["function"]["name"] in allow]
+
 
     def run(self, user_input: str, max_steps: int = None) -> str:
         """多步ReAct循环：允许模型多次调用工具后再给出最终答案"""
@@ -33,7 +49,7 @@ class BaseAgent:
         })
 
         for _ in range(max_steps):
-            response = prepare_message(self.messages, tool=TOOL_DEFINITIONS)
+            response = prepare_message(self.messages, tool=self.tool_definitions or None)
             assistant_msg = response.choices[0].message
 
             # 模型如返回真实推理内容，记录为本轮思考
@@ -108,8 +124,10 @@ class BaseAgent:
         return parsed if isinstance(parsed, dict) else {"_raw": parsed, "error": "参数必须为JSON对象"}
 
     def _execute_tool(self, tool_call) -> str:
-        """安全执行工具调用，所有失败都以文本结果返回给模型"""
         tool_name = tool_call.function.name
+        # 白名单兜底：越权工具直接拒绝，结果不给模型
+        if self.allowed_tools not in (None, "*") and tool_name not in self.allowed_tools:
+            return f"无权调用工具: {tool_name}"
         raw_arguments = tool_call.function.arguments or ""
         try:
             args = json.loads(raw_arguments) if raw_arguments else {}
@@ -127,6 +145,31 @@ class BaseAgent:
         except Exception as exc:
             return f"工具 {tool_name} 执行失败: {exc}"
         return str(result)
+
+
+    def evaluate(self, user_input: str, candidates: dict, trajectories: dict = None) -> str:
+        """对比多个Agent答案。
+        candidate示例:{"数学家": "47", "程序员": "47"}
+        """
+        # 构造对比提示词
+        comparison_prompt = ("请对以下针对同一问题的不同答案进行评审:\n"
+                             f"问题: {user_input}\n")
+        for name, ans in candidates.items():
+            comparison_prompt += f"\n -{name}的答案: {ans}\n"
+        if trajectories:
+            comparison_prompt += "\n 以下是各Agent的思考轨迹供你参考:\n"
+            for name, traj in trajectories.items():
+                comparison_prompt += f"[{name}的推理过程]\n"
+                for step in traj:
+                    if step["type"] == "thought":
+                        comparison_prompt += f"思考:{step['content']}\n"
+                    elif step['type'] == "action":
+                        comparison_prompt += f"调用工具:{step['tool']}参数：{step['args']}\n"
+                    elif step['type'] == "observation":
+                        comparison_prompt += f"观察到外部环境:{step['result']}\n"
+        comparison_prompt += "\n判断哪个答案更准确。如果不一致，请尝试给出最终裁决，或生成最终答案。"
+        return self.run(comparison_prompt)
+
 
     def get_trajectory(self):
         """获取当前轮次思考轨迹"""
@@ -151,3 +194,14 @@ class BaseAgent:
 
         self.messages = system + history
         self.turn_start_indices = [len(system) + (s - first_index) for s in starts]
+
+
+def create_agent(role_id: str) -> BaseAgent:
+    """从 roles_config 角色注册表创建 Agent 实例"""
+    cfg = get_role(role_id)
+    return BaseAgent(
+        system_prompt=cfg["system_prompt"],
+        allowed_tools=cfg["allowed_tools"],
+        role_id=cfg["role_id"],
+        name=cfg["name"],
+    )
