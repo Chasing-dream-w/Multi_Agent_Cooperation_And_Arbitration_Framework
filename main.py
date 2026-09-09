@@ -3,6 +3,8 @@ from agents.programmer import Programmer
 from agents.arbiter import Arbiter
 from core.tools import Reset_Cache
 from agents.roles_config import get_role
+from concurrent.futures import ThreadPoolExecutor
+
 
 if __name__ == '__main__':
 
@@ -47,9 +49,12 @@ if __name__ == '__main__':
             break
         # 重置时间参数
         Reset_Cache()
-        # 获取当前轮次答案
-        ans_math = math_agent.run(question_in)
-        ans_prog = prog_agent.run(question_in)
+        # 并发调用
+        with ThreadPoolExecutor(max_workers=2) as executor:
+            future_math = executor.submit(math_agent.run, question_in)
+            future_prog = executor.submit(prog_agent.run, question_in)
+            ans_math = future_math.result()
+            ans_prog = future_prog.result()
         # 获取思考轨迹
         traj_math = math_agent.get_trajectory()
         traj_prog = prog_agent.get_trajectory()
