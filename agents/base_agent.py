@@ -96,6 +96,7 @@ class BaseAgent:
         self.trajectory.append({"type": "final_answer", "content": final_reply})
         return final_reply
 
+
     def _build_tool_call_message(self, assistant_msg) -> dict:
         """将SDK返回的assistant消息转换为API可接受的普通dict"""
         return {
@@ -114,6 +115,7 @@ class BaseAgent:
             ],
         }
 
+
     def _parse_tool_args(self, tool_call) -> dict:
         """解析模型返回的工具参数；失败时保留原始参数以便追踪"""
         raw_arguments = tool_call.function.arguments or ""
@@ -122,6 +124,7 @@ class BaseAgent:
         except json.JSONDecodeError:
             return {"_raw": raw_arguments, "error": "JSON解析失败"}
         return parsed if isinstance(parsed, dict) else {"_raw": parsed, "error": "参数必须为JSON对象"}
+
 
     def _execute_tool(self, tool_call) -> str:
         tool_name = tool_call.function.name

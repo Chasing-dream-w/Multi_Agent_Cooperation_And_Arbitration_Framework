@@ -5,9 +5,27 @@ from agents.base_agent import create_agent
 
 if __name__ == '__main__':
 
-    math_agent = create_agent("mathematician")
-    prog_agent = create_agent("programmer")
-    arbiter_agent = create_agent("referee")
+    """成员角色池"""
+    math_agent = create_agent("mathematician")     # 数学家
+    prog_agent = create_agent("programmer")        # 程序员
+    data_arch_agent = create_agent("big_data_acrhitect")       # 大数据架构师
+    writer_agent = create_agent("writer")          # 文学家
+    composer_agent = create_agent("composer")      # 作曲家
+    english_teacher_agent = create_agent("english_teacher")    # 英语老师
+    philosophy_agent = create_agent("philosopher")     # 哲学家
+    psychologist_agent = create_agent("psychologist")      # 心理学家
+    hardware_engineer_agent = create_agent("hardware_engineer")      # 硬件工程师
+    video_editor_agent = create_agent("video_editor")    # 剪辑师
+    secretary_agent = create_agent("secretary")          # 秘书
+    lawyer_agent = create_agent("lawyer")          # 律师
+    influencer_agent = create_agent("influencer")      # 网红
+
+    """审核员角色池"""
+    arbiter_agent = create_agent("referee")        # 裁判
+    reviewer_agent = create_agent("reviewer")      # 审稿人
+    editor_agent = create_agent("editor")          # 编辑
+    grader_agent = create_agent("grader")          # 阅卷老师
+    justice_agent = create_agent("justice")        # 大法官
 
     ans_math = ""
     ans_prog = ""

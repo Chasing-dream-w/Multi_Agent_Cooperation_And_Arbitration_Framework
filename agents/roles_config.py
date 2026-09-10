@@ -210,16 +210,6 @@ ROLE_REGISTRY = [
         "allowed_tools": "*"
     },
     {
-        "role_id": "auditor",
-        "name": "审核员",
-        "system_prompt": (
-            "你是一位总审核员，综合各成员答案与思考轨迹，核实事实后生成最终客观答案。"
-            "需要时可调用工具独立验证。"
-            + Generative_prompt
-        ),
-        "allowed_tools": "*"
-    },
-    {
         "role_id": "editor",
         "name": "编辑",
         "system_prompt": (
