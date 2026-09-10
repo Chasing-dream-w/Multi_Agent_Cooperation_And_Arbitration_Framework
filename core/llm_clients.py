@@ -13,7 +13,7 @@ client = OpenAI(api_key=API_KEY, base_url="https://api.deepseek.com")
 def prepare_message(message, tool=None):
     if tool:
         response = client.chat.completions.create(
-            model="deepseek-v4-flash",
+            model="deepseek-flash",
             messages=message,
             stream=False,
             reasoning_effort="high",

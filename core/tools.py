@@ -68,13 +68,6 @@ def Web_Search(query: str, max_result: int = 3) -> str:
     except Exception as e:
         return f"搜索失败: {str(e)}。提示：请检查网络连接。"
 
-def Get_History_Memory():
-    # 从本地数据库中获取历史记忆
-    pass
-
-def Rag():
-    # 从文本嵌入的向量数据库中拿知识
-    pass
 
 def Weather_search(city: str = "") -> str:
     """天气查询：通过城市名获取实时天气与今明两天的预报"""
@@ -219,13 +212,44 @@ def Ip_Lookup(ip: str = None) -> str:
     except Exception as e:
         return f"IP查询失败: {str(e)}。提示：请检查网络连接。"
 
+
+def Get_History_Memory(n: int = 4) -> str:
+    """读取当前对话最近 N 轮的历史记忆（只读）。
+    对应简介工具9"本地数据库读取"。写入由系统编排层负责，此处不写库。"""
+    try:
+        from core import database
+    except ImportError:
+        import database
+    conv_id = database.get_current_conversation()
+    if conv_id is None:
+        return "当前没有进行中的对话，无法读取历史记忆。"
+    turns = database.get_recent_turns(conv_id, n)
+    if not turns:
+        return "当前对话暂无历史记录。"
+    lines = [f"当前对话最近 {len(turns)} 轮历史："]
+    for t in turns:
+        lines.append(f"\n【第{t['seq']}轮】问：{t['question']}")
+        for a in t.get("answers", []):
+            lines.append(f"  - {a['role_id']}：{a['content']}")
+        if t.get("verdict"):
+            lines.append(f"  裁决({t.get('arbiter_role_id') or '审核员'})：{t['verdict']}")
+    return "\n".join(lines)
+
+
+def Rag():
+    # 从文本嵌入的向量数据库中拿知识
+    pass
+
+
 def Self_Summary():
     # 对话历史自我总结
     pass
 
+
 def Code_Sandbox():
     # 代码沙盒
     pass
+
 
 # 函数哈希
 TOOL_MAP = {
@@ -237,6 +261,7 @@ TOOL_MAP = {
     "weather_search": Weather_search,
     "file_read": File_Read,
     "ip_lookup": Ip_Lookup,
+    "get_history_memory": Get_History_Memory,
 }
 
 # 函数功能
@@ -349,6 +374,20 @@ TOOL_DEFINITIONS = [
                 "type": "object",
                 "properties": {
                     "ip": {"type": "string", "description": "要查询的IP地址，可省略"}
+                },
+                "required": []
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "get_history_memory",
+            "description": "读取当前对话最近若干轮的历史记忆（问题、各成员回答、审核员裁决）",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "n": {"type": "integer", "description": "读取最近几轮，默认4"}
                 },
                 "required": []
             }
