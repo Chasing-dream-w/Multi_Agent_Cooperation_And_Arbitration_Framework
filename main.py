@@ -1,80 +1,80 @@
-from core.tools import Reset_Cache
 from concurrent.futures import ThreadPoolExecutor
+from core.tools import Reset_Cache
 from agents.base_agent import create_agent
 
 
+def parallel_solve(question: str, member_agents: list, arbiter_agent) -> dict:
+    """前端/后端统一接口：动态多线程并发成员作答，再由审核员仲裁。
+
+    参数：
+        question      - 用户问题
+        member_agents - 已实例化的成员Agent列表（上线阶段由用户指定成员角色，至少1个）
+        arbiter_agent - 审核员Agent（用户指定1个审核员角色）
+    返回：
+        结构化结果 dict，供前端展示：
+        {
+            "max_workers": 实际线程池上限,
+            "answers": {成员名: 答案},
+            "trajectories": {成员名: 思考轨迹},
+            "review": 审核员裁决,
+        }
+    """
+    # 动态多线程分配：线程上限 = 成员角色数量（至少1个线程）
+    max_workers = max(1, len(member_agents))
+    with ThreadPoolExecutor(max_workers=max_workers) as executor:
+        futures = {agent.name: executor.submit(agent.run, question)
+                   for agent in member_agents}
+        answers = {name: future.result() for name, future in futures.items()}
+        trajectories = {agent.name: agent.get_trajectory()
+                        for agent in member_agents}
+
+    review = arbiter_agent.evaluate(
+        user_input=question,
+        candidates=answers,
+        trajectories=trajectories,
+    )
+    return {
+        "max_workers": max_workers,
+        "answers": answers,
+        "trajectories": trajectories,
+        "review": review,
+    }
+
+
 if __name__ == '__main__':
+    # ---------- 测试阶段：固定角色，不实现用户选择交互 ----------
+    # 上线阶段：由用户指定成员角色个数（至少1个）与1个审核员角色，
+    # 例如 MEMBER_IDS = ["mathematician", "programmer", "writer", ...]
+    # 注意 role_id 拼写见 agents/roles_config.py（如 big_data_architect）
+    MEMBER_IDS = ["mathematician", "programmer"]      # 成员角色（测试用，可增删）
+    ARBITER_ID = "referee"                            # 审核员角色（指定1个）
 
-    """成员角色池"""
-    math_agent = create_agent("mathematician")     # 数学家
-    prog_agent = create_agent("programmer")        # 程序员
-    data_arch_agent = create_agent("big_data_acrhitect")       # 大数据架构师
-    writer_agent = create_agent("writer")          # 文学家
-    composer_agent = create_agent("composer")      # 作曲家
-    english_teacher_agent = create_agent("english_teacher")    # 英语老师
-    philosophy_agent = create_agent("philosopher")     # 哲学家
-    psychologist_agent = create_agent("psychologist")      # 心理学家
-    hardware_engineer_agent = create_agent("hardware_engineer")      # 硬件工程师
-    video_editor_agent = create_agent("video_editor")    # 剪辑师
-    secretary_agent = create_agent("secretary")          # 秘书
-    lawyer_agent = create_agent("lawyer")          # 律师
-    influencer_agent = create_agent("influencer")      # 网红
+    member_agents = [create_agent(rid) for rid in MEMBER_IDS]
+    arbiter_agent = create_agent(ARBITER_ID)
 
-    """审核员角色池"""
-    arbiter_agent = create_agent("referee")        # 裁判
-    reviewer_agent = create_agent("reviewer")      # 审稿人
-    editor_agent = create_agent("editor")          # 编辑
-    grader_agent = create_agent("grader")          # 阅卷老师
-    justice_agent = create_agent("justice")        # 大法官
-
-    ans_math = ""
-    ans_prog = ""
     while True:
-        # 设置对话历史上限，默认为4轮
-        math_agent.set_messages_windows()
-        prog_agent.set_messages_windows()
-        arbiter_agent.set_messages_windows()
-        
+        # 滑动窗口限制对话历史上限（默认最近3轮）
+        for agent in member_agents + [arbiter_agent]:
+            agent.set_messages_windows()
+
         question_in = input("请输入(空值回车以结束对话):")
         if question_in == '':
             break
-        # 重置时间参数
+        # 重置时间缓存，确保本轮时间新鲜
         Reset_Cache()
-        # 并发调用
-        with ThreadPoolExecutor(max_workers=2) as executor:
-            future_math = executor.submit(math_agent.run, question_in)
-            future_prog = executor.submit(prog_agent.run, question_in)
-            ans_math = future_math.result()
-            ans_prog = future_prog.result()
-        # 获取思考轨迹
-        traj_math = math_agent.get_trajectory()
-        traj_prog = prog_agent.get_trajectory()
 
-        # # 打印思考轨迹
-        print("#" * 50)
-        print("数学家思考轨迹:")
-        for step in traj_math:
-            print(f"{step['content']}")
-        print("#" * 50)
-        print("程序员思考轨迹:")
-        for step in traj_prog:
-            print(f"{step['content']}")
-        print("#" * 50)
+        result = parallel_solve(question_in, member_agents, arbiter_agent)
 
-        #将思考轨迹加入判别
-        review = arbiter_agent.evaluate(
-            user_input= question_in,
-            candidates=
-            {
-                "数学家": ans_math,
-                "程序员": ans_prog
-            },
-            trajectories=
-            {
-                "数学家": traj_math,
-                "程序员": traj_prog
-            }
-        )
-        print(review)
+        # 打印各成员思考轨迹
+        for name, traj in result["trajectories"].items():
+            print("#" * 50)
+            print(f"{name}思考轨迹:")
+            for step in traj:
+                print(step["content"])
+
+        # 打印线程池上限与审核员裁决
+        print("#" * 50)
+        print(f"线程池上限: {result['max_workers']} (成员数量: {len(MEMBER_IDS)})")
+        print(result["review"])
 
     print("对话已结束！")
