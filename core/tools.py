@@ -241,9 +241,35 @@ def Rag():
     pass
 
 
-def Self_Summary():
-    # 对话历史自我总结
-    pass
+def Self_Summary(role_name: str, previous_big: str, recent_smalls: list) -> str:
+    """大总结：把某角色的「上一次大总结 + 最近5条小总结」压成一条新的大总结。
+    由编排层每5轮调用一次（非LLM工具，不注册进TOOL_MAP）。"""
+    # 说明：这是一次独立的模型调用，输入很短（都是小总结），产出仍很短。
+    # 延迟导入 prepare_message，避免与 llm_clients 循环导入。
+    try:
+        from core.llm_clients import prepare_message
+    except ImportError:
+        from llm_clients import prepare_message
+
+    parts = [f"你是「{role_name}」。请把下面你过往的记忆压缩成一段不超过150字的连贯小结，"
+             "只保留关键话题、结论与立场，不要展开论述。"]
+    if previous_big:
+        parts.append(f"\n[更早的长期记忆]\n{previous_big}")
+    if recent_smalls:
+        joined = "\n".join(f"- {s}" for s in recent_smalls)
+        parts.append(f"\n[最近几轮的小结]\n{joined}")
+    parts.append("\n请直接输出压缩后的那段小结，不要任何前缀、解释或标签。")
+
+    prompt = "\n".join(parts)
+    try:
+        response = prepare_message([{"role": "user", "content": prompt}], tool=None)
+        text = (response.choices[0].message.content or "").strip()
+        # 兜底：万一模型仍带标签，剥掉
+        if "<summary>" in text:
+            text = text.split("<summary>")[-1].split("</summary>")[0].strip()
+        return text[:200]
+    except Exception as e:
+        return f"大总结失败: {str(e)}"
 
 
 def Code_Sandbox():

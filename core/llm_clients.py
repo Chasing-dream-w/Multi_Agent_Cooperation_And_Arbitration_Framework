@@ -8,25 +8,33 @@ load_dotenv()
 API_KEY = os.getenv('DEEPSEEK_API_KEY')
 client = OpenAI(api_key=API_KEY, base_url="https://api.deepseek.com")
 
+# 单次回复的最大输出 token 数（thinking 模式下思考与正文共享此上限，需留足正文空间）
+MAX_TOKENS = 20000
+MODEL_NAME = "deepseek-flash"
+
 
 # API调用函数，核心内容
-def prepare_message(message, tool=None):
+def prepare_message(message, tool=None, reasoning_effort="low"):
+    """调用模型。
+    reasoning_effort: 思考强度，成员角色用 "low"，审核员用 "high"。"""
     if tool:
         response = client.chat.completions.create(
-            model="deepseek-flash",
+            model=MODEL_NAME,
             messages=message,
             stream=False,
-            reasoning_effort="high",
+            max_tokens=MAX_TOKENS,
+            reasoning_effort=reasoning_effort,
             extra_body={"thinking": {"type": "enabled"}},
             tools= tool,
             tool_choice="auto"
         )
     else:
         response = client.chat.completions.create(
-            model="deepseek-v4-flash",
+            model=MODEL_NAME,
             messages=message,
             stream=False,
-            reasoning_effort="high",
+            max_tokens=MAX_TOKENS,
+            reasoning_effort=reasoning_effort,
             extra_body={"thinking": {"type": "enabled"}},
             tool_choice="auto"
         )

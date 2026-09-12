@@ -1,6 +1,7 @@
 import sys
 import os
 import json
+import re
 
 # 获取当前脚本所在目录的绝对路径
 current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -14,15 +15,17 @@ from agents.roles_config import get_role
 
 class BaseAgent:
     def __init__(self, system_prompt: str, allowed_tools=None,
-                 role_id: str = "", name: str = ""):
+                 role_id: str = "", name: str = "", reasoning_effort: str = "low"):
         self.system_prompt = system_prompt
         self.role_id = role_id
         self.name = name
         self.allowed_tools = allowed_tools  # None/"*" = 全量；列表 = 白名单
+        self.reasoning_effort = reasoning_effort  # 思考强度：成员 low / 审核员 high
         self.messages = [{"role": "system", "content": system_prompt}]
         self.trajectory = []
         self.turn_start_indices = []
         self.max_steps = 4
+        self.summary = ""   # 本轮回答中切出的自我小结（不进 messages，只供落库）
         # 关键：按白名单过滤，模型只能"看到"被允许的工具
         self.tool_definitions = self._filter_tool_definitions(TOOL_DEFINITIONS)
 
@@ -35,6 +38,21 @@ class BaseAgent:
         return [d for d in all_defs if d["function"]["name"] in allow]
 
 
+    @staticmethod
+    def _split_summary(text: str) -> tuple:
+        """把回答里的 <summary>...</summary> 切出来。
+        返回 (干净答案, 小结)。无标签时小结为空串，答案原样返回。"""
+        if text and "<summary>" in text and "</summary>" in text:
+            match = re.search(r"<summary>(.*?)</summary>", text, flags=re.DOTALL)
+            if match:
+                summary = match.group(1).strip()[:100]
+                clean = (text[:match.start()] + text[match.end():]).strip()
+                # 兜底：切完若为空（模型只输出了小结），则答案回落为小结
+                return (clean if clean else summary), summary
+        return (text or "").strip(), ""
+
+
+
     def run(self, user_input: str, max_steps: int = None) -> str:
         """多步ReAct循环：允许模型多次调用工具后再给出最终答案"""
         if max_steps is None:
@@ -42,6 +60,7 @@ class BaseAgent:
 
         # 每轮只记录当前轮次的思考轨迹
         self.trajectory = []
+        self.summary = ""   # 每轮重置小结
         # 追加用户消息
         self.turn_start_indices.append(len(self.messages))
         self.messages.append({"role": "user",
@@ -49,7 +68,8 @@ class BaseAgent:
         })
 
         for _ in range(max_steps):
-            response = prepare_message(self.messages, tool=self.tool_definitions or None)
+            response = prepare_message(self.messages, tool=self.tool_definitions or None,
+                                       reasoning_effort=self.reasoning_effort)
             assistant_msg = response.choices[0].message
 
             # 模型如返回真实推理内容，记录为本轮思考
@@ -59,8 +79,12 @@ class BaseAgent:
 
             # 模型不再调用工具，当前内容即为最终答案
             if not assistant_msg.tool_calls:
-                reply = assistant_msg.content or ""
-                self.messages.append({"role": "assistant", "content": reply})
+                raw = assistant_msg.content or ""
+                reply, self.summary = self._split_summary(raw)
+                # 历史里保留"模型原始输出"（含 <summary> 标签），而非切掉标签的干净答案：
+                # 否则模型下一轮会模仿自己"不带标签"的历史，导致从第3轮起不再输出小结。
+                # 对用户隐藏摘要靠展示/落库层（返回的是干净 reply），不靠污染模型上下文。
+                self.messages.append({"role": "assistant", "content": raw.strip() or reply})
                 self.trajectory.append({"type": "final_answer", "content": reply})
                 return reply
 
@@ -90,9 +114,12 @@ class BaseAgent:
                 })
 
         # 达到最大步数后，基于已有工具结果强制生成最终答案
-        final_response = prepare_message(self.messages, tool=None)
-        final_reply = final_response.choices[0].message.content or ""
-        self.messages.append({"role": "assistant", "content": final_reply})
+        final_response = prepare_message(self.messages, tool=None,
+                                         reasoning_effort=self.reasoning_effort)
+        raw = final_response.choices[0].message.content or ""
+        final_reply, self.summary = self._split_summary(raw)
+        # 同上：历史保留含标签的原始输出
+        self.messages.append({"role": "assistant", "content": raw.strip() or final_reply})
         self.trajectory.append({"type": "final_answer", "content": final_reply})
         return final_reply
 
@@ -178,11 +205,24 @@ class BaseAgent:
         """获取当前轮次思考轨迹"""
         return self.trajectory
 
+    def load_memory(self, memory_text: str) -> None:
+        """把一段长期记忆作为 system 消息注入上下文。
+        用 system 角色是有意的——set_messages_windows 会保留全部 system 消息，
+        记忆不会被滑动窗口裁掉。空文本不注入。"""
+        if not memory_text:
+            return
+        self.messages.append({
+            "role": "system",
+            "content": f"以下是你在这段对话中的长期记忆，请在后续回答中作为背景参考：\n{memory_text}",
+        })
+
+
     def reset(self):
         """重置对话历史"""
         self.messages = [{"role": "system", "content": self.system_prompt}]
         self.trajectory = []
         self.turn_start_indices = []
+        self.summary = ""
 
     def set_messages_windows(self, window_size: int = 3):
         """按完整轮次滑动历史消息,轨迹由每次run()单独维护"""
@@ -202,9 +242,12 @@ class BaseAgent:
 def create_agent(role_id: str) -> BaseAgent:
     """从 roles_config 角色注册表创建 Agent 实例"""
     cfg = get_role(role_id)
+    # 审核员池（allowed_tools == "*"）用高强度思考，成员用低强度
+    is_arbiter = cfg["allowed_tools"] == "*"
     return BaseAgent(
         system_prompt=cfg["system_prompt"],
         allowed_tools=cfg["allowed_tools"],
         role_id=cfg["role_id"],
         name=cfg["name"],
+        reasoning_effort="high" if is_arbiter else "low",
     )
