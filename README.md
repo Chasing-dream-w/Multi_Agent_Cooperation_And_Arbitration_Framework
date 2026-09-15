@@ -49,12 +49,8 @@ Multi_Agent_Corperation_And_Arbitration_Framework/
 │  ├─ llm_clients.py       # DeepSeek/OpenAI 兼容模型调用封装
 │  ├─ tools.py             # 搜索、计算、翻译、天气、文件读取等工具
 │  └─ database.py          # SQLite 对话、轮次、答案与长期记忆存储
-├─ data/
-│  └─ conversations.db     # 本地测试数据库，已被 Git 忽略
 ├─ requirement.txt         # 依赖清单
-├─ 项目简介.txt            # 项目目标与功能说明
-├─ .env                    # API Key 等本地配置
-└─ .gitignore              # Git 忽略规则
+└─ 项目简介.txt            # 项目目标与功能说明
 ```
 
 ### 🗺️ Roadmap (未来规划)
