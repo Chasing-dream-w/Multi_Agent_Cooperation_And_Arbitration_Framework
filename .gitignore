@@ -1,1 +1,6 @@
 .env
+项目简介.txt
+
+# Local test databases
+/data/*.db
+/data/*.db-*

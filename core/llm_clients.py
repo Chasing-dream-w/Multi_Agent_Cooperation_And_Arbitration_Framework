@@ -13,7 +13,7 @@ from core import tools
 
 
 load_dotenv()                                   # 从 .env 读取配置（如 API Key）
-API_KEY = os.getenv('DEEPSEEK_API_KEY')
+API_KEY = os.getenv('API_KEY')
 # 超时与重试（解决"卡死等待"和"偶发失败直接崩"）：
 #   timeout=60       单次请求最长 60 秒（默认 600 秒，断网时会卡 10 分钟，太久）
 #   max_retries=3    网络错误 / 限流(429) / 服务端错误(5xx) 时自动重试 3 次
