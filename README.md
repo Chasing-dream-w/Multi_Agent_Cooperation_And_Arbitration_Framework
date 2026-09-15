@@ -55,9 +55,12 @@ Multi_Agent_Corperation_And_Arbitration_Framework/
 ├─ 项目简介.txt            # 项目目标与功能说明
 ├─ .env                    # API Key 等本地配置
 └─ .gitignore              # Git 忽略规则
+```
 
 ### 🗺️ Roadmap (未来规划)
 
+```text
 □ 完成交互式模式（循环迭代，仲裁者给出建议、成员修改直至终止）
 □ 尝试将无监督群体学习中的“共识函数”数学表达融入仲裁者逻辑
 □ 评估多个基学习器（Agent）的多样性指标
+```
