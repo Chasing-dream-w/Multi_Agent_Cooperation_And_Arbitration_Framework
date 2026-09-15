@@ -37,8 +37,9 @@ API_KEY=sk-xxxxxxxxxxxxxxxxxxxxxxxx
 pyhon main.py
 ```
 
-### 📁 项目结构
+## 📁 项目结构
 
+```text
 Multi_Agent_Corperation_And_Arbitration_Framework/
 ├─ main.py                 # 终端入口、并发调度、对话选择、落库与总结触发
 ├─ agents/
