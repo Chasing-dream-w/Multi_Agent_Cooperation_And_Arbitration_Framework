@@ -27,7 +27,7 @@ pip install -r requirement.txt
 ```
 
 ### 3. 配置API-key
-**在项目根目录创建 .env 文件，并填入你的 OpenAI 格式 API Key：**
+**在项目根目录创建 .env 文件，并填入你的 OpenAI 格式的 DeepSeek API-Key：**
 ```env
 API_KEY=sk-xxxxxxxxxxxxxxxxxxxxxxxx
 ```
