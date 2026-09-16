@@ -1,6 +1,9 @@
 .env
 __pycache__/
 
+# IDE 配置（PyCharm 每次打开都会重新生成）
+.idea/
+
 # Local test databases
 /data/*.db
 /data/*.db-*

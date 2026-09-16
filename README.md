@@ -23,14 +23,22 @@ conda activate multi_agent
 
 ### 2. 安装依赖
 ```bash
-pip install -r requirement.txt
+pip install -r requirements.txt
 ```
 
-### 3. 配置API-key
-**在项目根目录创建 .env 文件，并填入你的 OpenAI 格式的 DeepSeek API-Key：**
+### 3. 配置 API-Key
+
+本项目通过 **DeepSeek** 的 OpenAI 兼容接口调用模型（`base_url` 见 `core/llm_clients.py`），
+因此需要 **DeepSeek 的 API Key**。把模板复制为 `.env` 后填入你自己的 Key：
+
+```bash
+copy .env.example .env          # macOS / Linux 用：cp .env.example .env
+```
 ```env
 API_KEY=sk-xxxxxxxxxxxxxxxxxxxxxxxx
 ```
+
+> 如需更换模型或供应商，修改 `core/llm_clients.py` 里的 `base_url` 与 `MODEL_NAME` 即可。
 
 ### 4. 运行项目
 ```bash
@@ -40,7 +48,7 @@ python main.py
 ## 📁 项目结构
 
 ```text
-Multi_Agent_Corperation_And_Arbitration_Framework/
+Multi_Agent_Cooperation_And_Arbitration_Framework/
 ├─ main.py                 # 终端入口、并发调度、对话选择、落库与总结触发
 ├─ agents/
 │  ├─ base_agent.py        # Agent 基类：多轮 ReAct、工具调用、轨迹、滑窗记忆
@@ -49,7 +57,8 @@ Multi_Agent_Corperation_And_Arbitration_Framework/
 │  ├─ llm_clients.py       # DeepSeek/OpenAI 兼容模型调用封装
 │  ├─ tools.py             # 搜索、计算、翻译、天气、文件读取等工具
 │  └─ database.py          # SQLite 对话、轮次、答案与长期记忆存储
-├─ requirement.txt         # 依赖清单
+├─ requirements.txt        # 依赖清单
+├─ .env.example            # 环境变量模板（复制为 .env 后填入 API Key）
 └─ 项目简介.txt            # 项目目标与功能说明
 ```
 
