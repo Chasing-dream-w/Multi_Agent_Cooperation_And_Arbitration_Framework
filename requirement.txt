@@ -2,3 +2,4 @@ openai
 python-dotenv
 ddgs
 deep-translator
+pypdf
