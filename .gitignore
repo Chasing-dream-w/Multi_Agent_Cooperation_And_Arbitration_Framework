@@ -1,6 +1,7 @@
 .env
-项目简介.txt
+__pycache__/
 
 # Local test databases
 /data/*.db
 /data/*.db-*
+*.pyc
